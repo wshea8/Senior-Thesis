@@ -1,0 +1,317 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Apr 12 20:36:13 2023
+
+@author: williamshea
+"""
+
+"""
+In this file I will create a list of students who will apply to 2 colleges.
+The colleges will admit or reject them based on some admission quota and 
+academic standard.
+"""
+
+import numpy as np
+import random
+import matplotlib.pyplot as plt
+import time
+import math
+start_time=time.time()
+
+
+random.seed(380)
+
+class student:
+    def __init__(self,id_num, wtp, atp, skill, luck):
+        self.id_num=id_num
+        self.wtp=wtp
+        self.atp=atp
+        self.skill=skill
+        self.luck=luck
+    def college_preference(self, college1,college2):
+            aid1=0
+            aid2=0
+            if self.atp<college1[0]:
+                aid1=min(college1[0]-college1[1],college1[0]-self.atp)
+            if self.atp<college2[0]:
+                aid2=min(college2[0]-college2[1],college2[0]-self.atp)
+            if self.wtp<college1[0]-aid1 and self.wtp<college2[0]-aid2:
+                return 0
+            if self.wtp<=college1[0]-aid1 and self.wtp>=college2[0]-aid2:
+                return 2
+            if self.wtp<=college2[0]-aid2 and self.wtp>=college1[0]-aid1:
+                return 1
+            else:
+                score1=college1[0]/(college1[0]-aid1)-0.2*(abs(college1[3]-self.skill))
+                score2=college2[0]/(college2[0]-aid2)-0.2*(abs(college2[3]-self.skill))
+                if score1>score2:
+                    return 1
+                if score2>score1:
+                    return 2
+                if score1==score2:
+                    return 3
+    def apply(self, college1,college2):
+        apply=0
+        aid1=0
+        aid2=0
+        if self.atp<college1[0]:
+            aid1=min(college1[0]-college1[1],college1[0]-self.atp)
+        if self.atp<college2[0]:
+            aid2=min(college2[0]-college2[1],college2[0]-self.atp)
+        if college1[0]-aid1<=self.wtp and college2[0]-aid2<=self.wtp:
+            apply=3
+        if college1[0]-aid1<=self.wtp and college2[0]-aid2>self.wtp:
+            apply=1
+        if college1[0]-aid1>self.wtp and college2[0]-aid2<=self.wtp:
+            apply=2
+        return apply
+    def matriculate(self, college1, college2):
+        admit_list1=list(np.array(admit(college1,college2,student_list)[0])[:,0])
+        admit_list2=list(np.array(admit(college1,college2,student_list)[1])[:,0])
+        if self.id_num not in admit_list1 and self.id_num not in admit_list2:
+            return 0
+        if self.id_num in admit_list1 and self.id_num in admit_list2:
+            if self.college_preference(college1, college2)==3:
+                rand=np.random.randint(1,3)
+                if rand==1:
+                    return 1
+                if rand!=1:
+                    return 2
+            if self.college_preference(college1,college2)==1:
+                return 1
+            if self.college_preference(college1,college2)==2:
+                return 2
+        if self.id_num in admit_list1:
+            if self.id_num not in admit_list2:
+                return 1
+        if self.id_num in admit_list2:
+            if self.id_num not in admit_list1:
+                return 2
+            
+student_list=[]
+skill_weight=0.95
+luck_weight=0.05 
+for i in range(1,1501):
+    student_list.append(student(i,np.random.normal(50,10),np.random.normal(50,10),np.random.randint(1,101),np.random.randint(1,101)))
+
+
+"""
+Now we will define two colleges, with certain prices, quotas, and admission standards
+The first entry is price, second is cost per student, third is quota, and fourth is standard.
+"""
+college1=[55,25,100,50]
+college2=[90,25,100,65]
+
+
+def admit(college1,college2,student_list):
+    application_list=[]
+    for student in student_list:
+        if student.apply(college1,college2)!=0:
+            application_list.append([student.id_num,student.apply(college1,college2),round(skill_weight*student.skill+luck_weight*student.luck,2),student.college_preference(college1, college2)])
+    applicant_pool1=[]
+    applicant_pool2=[]
+    for i in range(len(application_list)):
+        if application_list[i][1]==1 and application_list[i][2]>=college1[3]:
+            applicant_pool1.append(application_list[i])
+        if application_list[i][1]==2 and application_list[i][2]>=college2[3]:
+            applicant_pool2.append(application_list[i])
+        if application_list[i][1]==3:
+            if application_list[i][2]>=college1[3]:
+                applicant_pool1.append(application_list[i])
+            if application_list[i][2]>=college2[3]:
+                applicant_pool2.append(application_list[i])
+    applicant_pool1=sorted(applicant_pool1, key = lambda x: x[2], reverse = True)
+    applicant_pool2=sorted(applicant_pool2, key = lambda x: x[2], reverse = True)      
+    count1=0
+    count2=0
+    yield1=0
+    yield2=0
+    application_list=sorted(application_list, key = lambda x: x[2], reverse = True)
+    for i in range(len(application_list)):
+        if yield1>=college1[2] and yield2>=college2[2]:
+            break
+        if application_list[i][1]==0:
+            continue
+        if application_list[i][1]==1 and yield1<college1[2]:
+            count1+=1
+            yield1+=1
+        if application_list[i][1]==2 and yield2<college2[2]:
+            count2+=1
+            yield2+=1
+        if application_list[i][1]==3:
+            if application_list[i][3]==1:
+                if yield1<college1[2]:
+                    count1+=1
+                    yield1+=1
+                    if yield2<college2[2]:
+                        count2+=1
+                if yield1>=college1[2] and yield2<college2[2]:
+                    count2+=1
+                    yield2+=1
+            if application_list[i][3]==2:
+                if yield2<college2[2]:
+                    count2+=1
+                    yield2+=1
+                    if yield1<college1[2]:
+                        count1+=1
+                if yield2>=college2[2] and yield1<college1[2]:
+                    count1+=1
+                    yield1+=1
+            if application_list[i][3]==3:
+                if yield1<college1[2] and yield2<college2[2]:
+                    count1+=1
+                    count2+=1
+                    yield1+=0.5
+                    yield2+=0.5
+                if yield1>=college1[2] and yield2<college2[2]:
+                    count2+=1
+                    yield2+=1
+                if yield2>=college2[2] and yield1<college1[2]:
+                    count1+=1
+                    yield1+=1
+    college1_admit_list=applicant_pool1[0:count1]
+    college2_admit_list=applicant_pool1[0:count2]
+    return college1_admit_list, college2_admit_list,applicant_pool1,applicant_pool2,count1,count2,yield1,yield2
+
+"""
+Now that we have a metric by which we can measure the success of the admissions process, 
+we can make a best response curve for both price and academic standards.
+"""
+
+big_response=[]    
+for i in np.linspace(0,2,3):
+    for j in np.linspace(0,2,3):
+        college2=[50+20*i,25,100,50+20*j]
+        responses=[]
+        for k in np.linspace(45,95,11):
+            for l in np.linspace(50,100,11):
+                college1=[l,25,100,k]
+                matric_list=[]
+                for student in student_list:
+                    if student.apply(college1,college2)!=0:
+                        if 0.95*student.skill+0.05*student.luck>=min(50+20*j,k):
+                            matric_list.append([student.matriculate(college1,college2),student.skill])
+                student_count=list(np.array(matric_list)[:,0]).count(1)
+                skill_list=[]
+                for m in range(len(matric_list)):
+                    if matric_list[m][0]==1:
+                        skill_list.append(int(matric_list[m][1]))
+                score=np.average(skill_list)-abs(100-student_count)
+                responses.append([l,k,score])
+            print(k)
+        big_response.append(responses)
+        print("J loop complete", j)
+    print("I loop complete", i)
+price=np.linspace(50,100,11)
+standard=np.linspace(45,95,11)
+scores=np.zeros(shape=(121,9))
+for i in range(9):
+    temp=np.array(big_response[i])
+    scores[:,i]=temp[:,2]
+score_grid_1=np.zeros(shape=(11,11))
+score_grid_2=np.zeros(shape=(11,11))
+score_grid_3=np.zeros(shape=(11,11))
+score_grid_4=np.zeros(shape=(11,11))
+score_grid_5=np.zeros(shape=(11,11))
+score_grid_6=np.zeros(shape=(11,11))
+score_grid_7=np.zeros(shape=(11,11))
+score_grid_8=np.zeros(shape=(11,11))
+score_grid_9=np.zeros(shape=(11,11))
+for i in range(11):
+    score_grid_1[:,i]=scores[11*i:11*i+11,0]
+    score_grid_2[:,i]=scores[11*i:11*i+11,1]
+    score_grid_3[:,i]=scores[11*i:11*i+11,2]
+    score_grid_4[:,i]=scores[11*i:11*i+11,3]
+    score_grid_5[:,i]=scores[11*i:11*i+11,4]
+    score_grid_6[:,i]=scores[11*i:11*i+11,5]
+    score_grid_7[:,i]=scores[11*i:11*i+11,6]
+    score_grid_8[:,i]=scores[11*i:11*i+11,7]
+    score_grid_9[:,i]=scores[11*i:11*i+11,8]
+    
+    
+
+end_time=time.time()
+total_time=end_time-start_time
+hours=math.floor(total_time/3600)
+minutes=math.floor((total_time-3600*hours)/60)
+seconds=math.floor(total_time-3600*hours-60*minutes)
+
+print(hours,":",minutes,":",seconds ," run time")
+
+from mpl_toolkits import mplot3d
+fig = plt.figure()
+ax = plt.axes(projection='3d')
+ax.contour3D(price,standard,score_grid_1,2000)
+ax.set_xlabel('price')
+ax.set_ylabel('standard')
+ax.set_zlabel('score')
+ax.set_zlim(30,100)
+
+fig1 = plt.figure()
+ax1 = plt.axes(projection='3d')
+ax1.contour3D(price,standard,score_grid_2,2000)
+ax1.set_xlabel('price')
+ax1.set_ylabel('standard')
+ax1.set_zlabel('score')
+ax1.set_zlim(30,100)
+   
+fig2 = plt.figure()
+ax2 = plt.axes(projection='3d')
+ax2.contour3D(price,standard,score_grid_3,2000)
+ax2.set_xlabel('price')
+ax2.set_ylabel('standard')
+ax2.set_zlabel('score')
+ax2.set_zlim(30,100)
+
+fig3 = plt.figure()
+ax3 = plt.axes(projection='3d')
+ax3.contour3D(price,standard,score_grid_4,2000)
+ax3.set_xlabel('price')
+ax3.set_ylabel('standard')
+ax3.set_zlabel('score')
+ax3.set_zlim(30,100)
+
+fig4 = plt.figure()
+ax4 = plt.axes(projection='3d')
+ax4.contour3D(price,standard,score_grid_5,2000)
+ax4.set_xlabel('price')
+ax4.set_ylabel('standard')
+ax4.set_zlabel('score')
+ax4.set_zlim(30,100)
+
+fig5 = plt.figure()
+ax5 = plt.axes(projection='3d')
+ax5.contour3D(price,standard,score_grid_6,2000)
+ax5.set_xlabel('price')
+ax5.set_ylabel('standard')
+ax5.set_zlabel('score')
+ax5.set_zlim(30,100)
+
+fig6 = plt.figure()
+ax6 = plt.axes(projection='3d')
+ax6.contour3D(price,standard,score_grid_7, 2000)
+ax6.set_xlabel('price')
+ax6.set_ylabel('standard')
+ax6.set_zlabel('score')
+ax6.set_zlim(30,100)
+
+fig7 = plt.figure()
+ax7 = plt.axes(projection='3d')
+ax7.contour3D(price,standard,score_grid_8, 2000)
+ax7.set_xlabel('price')
+ax7.set_ylabel('standard')
+ax7.set_zlabel('score')
+ax7.set_zlim(30,100)
+
+fig8 = plt.figure()
+ax8 = plt.axes(projection='3d')
+ax8.contour3D(price,standard,score_grid_9, 2000)
+ax8.set_xlabel('price')
+ax8.set_ylabel('standard')
+ax8.set_zlabel('score')
+ax8.set_zlim(30,100)
+
+
+  
+      

@@ -1,0 +1,133 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Mar  6 20:55:53 2023
+
+@author: williamshea
+
+In this file I will attempt to simulate two universities competing for a group
+of students in the short run. I assume that they are able to offer financial 
+aid and change prices in the short run. However, quantity of students cannot
+be change in the short run.
+
+Students find it difficult and costly to determine the value of each 
+education and will use price as a proxy for its value.
+"""
+import numpy as np
+import random
+import matplotlib.pyplot as plt
+import time 
+import math
+
+start_time=time.time()
+random.seed(1842)
+
+
+class student:
+    def __init__(self,id_num, atp, wtp):
+        self.id_num=id_num #make each agent unique
+        self.atp=atp #person's ability to pay
+        self.wtp=wtp #perons's willingness to pay
+    def info(self):
+        print(self.atp,self.wtp)
+    def college_preference(self, college1,college2):
+            aid1=0
+            aid2=0
+            if self.atp<college1[0]:
+                aid1=min(college1[0]-college1[1],college1[0]-self.atp)
+            if self.atp<college2[0]:
+                aid2=min(college2[0]-college2[1],college2[0]-self.atp)
+            if self.wtp<college1[0]-aid1 and self.wtp<college2[0]-aid2:
+                return 0
+            if self.wtp<college1[0]-aid1 and self.wtp>=college2[0]-aid2:
+                return 2
+            if self.wtp<college2[0]-aid2 and self.wtp>=college1[0]-aid1:
+                return 1
+            else:
+                score1=college1[0]/(college1[0]-aid1)
+                score2=college2[0]/(college2[0]-aid2)
+                if score1>score2:
+                    return 1
+                if score2>score1:
+                    return 2
+                else:
+                    return 3
+
+students=[] #make empty list of potential customers
+wtp_list=[]
+atp_list=[]
+for i in list(range(1, 1001)):
+    students.append(student(i,np.random.normal(50,10),np.random.normal(50,10)))
+for student in students:
+    wtp_list.append(student.wtp)
+    atp_list.append(student.atp)
+   
+fig1=plt.figure()
+ax1=fig1.add_subplot(1,1,1)
+ax1.hist(wtp_list, bins=np.linspace(0,150,150))
+plt.show()
+
+fig2=plt.figure()
+ax2=fig2.add_subplot(1,1,1)
+ax2.hist(atp_list, bins=np.linspace(0,150,150))
+plt.show()
+"""
+Time for a best response curve of sorts
+First we have to define what their goal is.
+I assert that they want to maximize the number of students that prefer them
+So it'll be count_each[i]+count_each[3]/2
+"""
+cost_per_student_1=35
+cost_per_student_2=35
+c1_br=[]
+for i in np.linspace(cost_per_student_2,100,2*(100-cost_per_student_2)+1):
+    college2=[i,cost_per_student_2]
+    response_list=[]
+    for j in np.linspace(cost_per_student_1,100,2*(100-cost_per_student_1)+1):
+        pref_list=[]
+        college1=[j,cost_per_student_1]
+        for student in students:
+            pref_list.append(student.college_preference(college1, college2))
+        students_gained=pref_list.count(1)+ (pref_list.count(3))/2
+        response_list.append([j,i,students_gained])
+    c1_br.append(max(response_list, key=lambda x: x[2]))
+    print("%s percent done" %(round(100*(i-cost_per_student_2)/(2*(100-cost_per_student_2)),2)))
+
+c2_br=[]
+for i in np.linspace(cost_per_student_1,100,2*(100-cost_per_student_1)+1):
+    college1=[i,cost_per_student_1]
+    response_list=[]
+    for j in np.linspace(cost_per_student_2,100,2*(100-cost_per_student_2)+1):
+        pref_list=[]
+        college2=[j,cost_per_student_2]
+        for student in students:
+            pref_list.append(student.college_preference(college1, college2))
+        students_gained2=pref_list.count(2)+ (pref_list.count(3))/2
+        response_list.append([i,j,students_gained2])
+    c2_br.append(max(response_list, key=lambda x: x[2]))
+    if i==50:
+        test=response_list
+    print("%s percent done" %(round(50+100*(i-cost_per_student_1+0.5)/(2*(100-cost_per_student_1)),2)))
+
+
+plt.style.use('seaborn-whitegrid')
+c1_best_response = np.array(c1_br)
+c2_best_response = np.array(c2_br)
+fig = plt.figure()
+ax = fig.add_subplot(1, 1, 1)
+ax.plot(c1_best_response[1:-1, 0], c1_best_response[1:-1, 1], label='College 1 Best Response')
+ax.plot(c2_best_response[1:-1, 0], c2_best_response[1:-1, 1], label='College 2 Best Response')
+ax.set_xlabel('College 1 Price')
+ax.set_ylabel('College 2 Price')
+plt.legend()
+plt.show()
+
+end_time=time.time()
+total_time=end_time-start_time
+minutes=math.floor(total_time/60)
+seconds=math.floor(total_time-60*minutes)
+
+print(minutes, ":" ,seconds ," run time")
+
+
+
